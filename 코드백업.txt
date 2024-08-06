@@ -1,0 +1,429 @@
+//BLYNK
+#define BLYNK_PRINT Serial
+#define BLYNK_TEMPLATE_ID           "TMPLqg9Lqkvp"
+#define BLYNK_DEVICE_NAME           "Quickstart Device"
+
+#include <ESP8266_Lib.h>
+#include <BlynkSimpleShieldEsp8266.h>
+
+char auth[] = "lbgG3kghyEp_UfaVPSmcDHDW4KM-1lfP";
+char ssid[] = "kimiphone";
+char pass[] = "01076770313";
+
+#define EspSerial Serial1
+#include <SoftwareSerial.h>
+SoftwareSerial EspSerial(2, 3); // RX, TX
+#define ESP8266_BAUD 9600
+ESP8266 wifi(&EspSerial);
+//
+
+#include <virtuabotixRTC.h>
+#include "DHT.h"
+#define DHTPIN 4
+#define DHTTYPE DHT11
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
+
+DHT dht(DHTPIN, DHTTYPE);
+virtuabotixRTC myRTC(5,6,7);
+LiquidCrystal_I2C lcd(0x27, 16, 2);
+//WidgetLCD virLcd(V5);
+
+int cnt = 0;
+int t;
+int h;
+int alaHour = 0;
+int alaMin = 0;
+int alaSec = 0;
+int setCnt=0;
+int piez = 8;
+int startCnt = 0;
+int curSec=0;
+int curMin=0;
+int curHour=0;
+int bodySen=10;
+int bodyVal=0;
+int bodyTmp=0;
+int bodyCnt=0;
+int soundSenA=A0;
+int soundSenD=9;
+int soundVal=0;
+int soundCnt=0;
+int temAvg=0;
+int humAvg=0;
+int systemMode=0;
+int totalScore=0;
+int timeScore=0;
+int temScore=0;
+int humScore=0;
+int soundScore=0;
+int bodyScore=0;
+
+void realTime() {
+  myRTC.updateTime();
+  lcd.setCursor(0,0);
+  lcd.print(myRTC.year);
+  lcd.print("/");
+  lcd.print(myRTC.month);
+  lcd.print("/");
+  lcd.print(myRTC.dayofmonth);
+  lcd.print("/");
+  switch (myRTC.dayofweek) {
+      case 1:
+        lcd.print("Sun");
+        break;
+      case 2:
+        lcd.print("MON");
+        break;
+      case 3:
+        lcd.print("TUE");
+        break;
+      case 4:
+        lcd.print("WED");
+        break;
+      case 5:
+        lcd.print("THU");
+        break;
+      case 6:
+        lcd.print("FRI");
+        break;
+      case 7:
+        lcd.print("SAT");
+        break;
+    }
+  lcd.setCursor(0,1);
+  lcd.print(myRTC.hours);
+  lcd.print(":");
+  lcd.print(myRTC.minutes);
+  lcd.print(":");
+  lcd.print(myRTC.seconds);
+  lcd.print("/");
+  lcd.print(t);
+  lcd.print("C");
+  lcd.print("/");
+  lcd.print(h);
+  lcd.print("%");
+  if(myRTC.hours==alaHour&&myRTC.minutes==alaMin){
+    digitalWrite(piez,HIGH);
+  }
+}
+
+void alarmMode(){
+  lcd.setCursor(0,0);
+  lcd.print("ALARM SET");
+  alaTime();
+}
+
+void setHour(){
+  lcd.setCursor(0,0);
+  lcd.print("HOUR SET");
+  alaTime();
+  alaHour=alaHour%24;
+}
+
+void setMin(){
+  lcd.setCursor(0,0);
+  lcd.print("MIN SET");
+  alaTime();
+  alaMin=alaMin%60;
+}
+
+void setSec(){
+  lcd.setCursor(0,0);
+  lcd.print("SEC SET");
+  alaTime();
+  alaSec=alaSec%60;
+}
+
+void alaTime() {
+  lcd.setCursor(0,1);
+  lcd.print(alaHour);
+  lcd.print(":");
+  lcd.print(alaMin);
+  lcd.print(":");
+  lcd.print(alaSec);
+}
+
+void mode(){
+  if(cnt%5==0) {
+    realTime();
+  }
+  else if(cnt%5==1) {
+    alarmMode();
+  }
+  else if(cnt%5==2) {
+    setHour();
+  }
+  else if(cnt%5==3) {
+    setMin();
+  }
+  else if(cnt%5==4) {
+    setSec();
+  }
+  else{
+    lcd.clear();
+  }
+}
+
+void setup()
+{
+  Serial.begin(9600);
+
+  delay(10);
+
+  EspSerial.begin(ESP8266_BAUD);
+  delay(10);
+
+  Blynk.begin(auth, wifi, ssid, pass);
+  dht.begin();
+  lcd.init();
+  lcd.noBacklight();
+  lcd.clear();
+  myRTC.setDS1302Time(0, 1, 2, 7, 10, 9, 2022);
+  pinMode(8,OUTPUT);
+  pinMode(10,INPUT);
+  pinMode(9,INPUT);
+  pinMode(A0,INPUT);
+}
+
+void senSor(){
+  if(curSec==0){curSec=myRTC.seconds;}
+  if(curMin==0){curMin=myRTC.minutes;}
+  if(curHour==0){curHour=myRTC.hours;}
+  myRTC.updateTime();
+  bodyVal=digitalRead(bodySen);
+  if(bodyVal==HIGH){
+    bodyTmp++;
+    bodyCnt=bodyTmp/20;
+  }
+  soundVal=digitalRead(soundSenD);
+  if(soundVal==0) {
+    soundCnt++;
+  }
+  if(myRTC.seconds==30) {
+    if(temAvg==0&&humAvg==0){
+      temAvg=t;
+      humAvg=h;
+    }
+    temAvg=(temAvg+t)/2;
+    humAvg=(humAvg+h)/2;
+  }
+  //test();
+}
+/*
+void test(){
+  Serial.print("B");
+  Serial.print(bodyCnt);
+  Serial.print("/");
+  Serial.print("S");
+  Serial.print(soundCnt);
+  Serial.print("/");
+  Serial.print("T");
+  Serial.print(temAvg);
+  Serial.print("/");
+  Serial.print("H");
+  Serial.println(humAvg);
+}
+*/
+void sleepMode() {
+  if(cnt%5==0){
+    senSor();
+    sleepStart();
+  }
+  else if(cnt%5==1){
+    score();
+    sleepEnd();
+  }
+  else if(cnt%5==2){
+    detailScore1();
+  }
+  else if(cnt%5==3){
+    detailScore2();
+  }
+  else if(cnt%5==4){
+    detailScore3();
+  }
+}
+
+void sleepStart() {
+  lcd.setCursor(0,0);
+  lcd.print("Sleep Tight!");
+  lcd.setCursor(0,1);
+  lcd.print("B");
+  lcd.print(bodyCnt);
+  lcd.print("/");
+  lcd.print("S");
+  lcd.print(soundCnt);
+  lcd.print("/");
+  lcd.print("T");
+  lcd.print(temAvg);
+  lcd.print("/");
+  lcd.print("H");
+  lcd.println(humAvg);
+}
+
+void score(){
+  int sleepTime=myRTC.hours-curHour;
+  
+  if(sleepTime<=3||sleepTime>=13){timeScore=0;}
+  else if(sleepTime<=9&&sleepTime>=7){timeScore=2;}
+  else{timeScore=1;}
+  
+  if(temAvg<=9||temAvg>=26){temScore=0;}
+  else if(temAvg<=20&&temAvg>=16){temScore=2;}
+  else {temScore=1;}
+  
+  if(humAvg<=19||humAvg>=80){humScore=0;}
+  else if(humAvg<=60&&humAvg>=40){humScore=2;}
+  else {humScore=1;}
+
+  if(soundCnt>80){soundScore=0;}
+  else if(soundCnt<=60){soundScore=2;}
+  else{soundScore=1;}
+
+  if(bodyCnt>10){bodyScore=0;}
+  else if(bodyCnt<=5){bodyScore=2;}
+  else{bodyScore=1;}
+
+  totalScore=timeScore+temScore+humScore+soundScore+bodyScore;
+}
+
+void sleepEnd() {
+  lcd.setCursor(0,0);
+  lcd.print("Good Morning!");
+  lcd.setCursor(0,1);
+  lcd.print("Score : ");
+  lcd.print(totalScore);
+  lcd.print("/10");
+  
+}
+
+void detailScore1(){
+  lcd.setCursor(0,0);
+  lcd.print("Detail Score");
+  lcd.setCursor(0,1);
+  lcd.print("slept ");
+  if(myRTC.minutes>=curMin){
+    lcd.print(myRTC.hours-curHour);
+    lcd.print("h");
+    lcd.print(myRTC.minutes-curMin);
+    lcd.print("m");
+  }
+  else{
+    lcd.print(myRTC.hours-curHour-1);
+    lcd.print("h");
+    lcd.print(60+myRTC.minutes-curMin);
+    lcd.print("m");
+  }
+  lcd.print("(");
+  lcd.print(timeScore);
+  lcd.print(")");
+}
+
+void detailScore2(){
+  lcd.setCursor(0,0);
+  lcd.print("Tem avg.");
+  lcd.print(temAvg);
+  lcd.print("c");
+  lcd.print("(");
+  lcd.print(temScore);
+  lcd.print(")");
+  lcd.setCursor(0,1);
+  lcd.print("Hum avg. ");
+  lcd.print(humAvg);
+  lcd.print("%");
+  lcd.print("(");
+  lcd.print(humScore);
+  lcd.print(")");
+}
+
+void detailScore3(){
+  lcd.setCursor(0,0);
+  lcd.print("Snored ");
+  lcd.print(soundCnt);
+  lcd.print("t(");
+  lcd.print(soundScore);
+  lcd.print(")");
+  lcd.setCursor(0,1);
+  lcd.print("Moved ");
+  lcd.print(bodyCnt);
+  lcd.print("t(");
+  lcd.print(bodyScore);
+  lcd.print(")");
+}
+
+void resetAll() {
+  curSec=0;
+  curMin=0;
+  curHour=0;
+  bodyVal=0;
+  bodyTmp=0;
+  bodyCnt=0;
+  soundVal=0;
+  soundCnt=0;
+  temAvg=0;
+  humAvg=0;
+  totalScore=0;
+  timeScore=0;
+  temScore=0;
+  humScore=0;
+  soundScore=0;
+  bodyScore=0;
+}
+
+void loop()
+{
+  Blynk.run();
+  t = dht.readTemperature();
+  h = dht.readHumidity();
+  if(systemMode%2==0){
+    mode();
+    resetAll();
+  }
+  else{
+    sleepMode();
+  }
+}
+
+BLYNK_WRITE (V1) {
+  int pinValue = param.asInt();
+  if(pinValue == 1) {
+    cnt++;
+    lcd.clear();
+    setCnt=0;
+  }
+}
+
+BLYNK_WRITE (V2) {
+  int pinValue = param.asInt();
+  if(pinValue == 1) {
+    if(cnt%5==2){alaHour++;}
+    if(cnt%5==3){alaMin++;}
+    if(cnt%5==4){alaSec++;}
+    if(cnt%5==0){
+      digitalWrite(piez,LOW);
+      alaHour=0;
+      alaMin=0;
+      alaSec=0;
+    }
+  }
+}
+
+BLYNK_WRITE (V3) {
+  int pinValue = param.asInt();
+  if(pinValue == 1) {
+    lcd.backlight();
+  }
+  else {
+    lcd.noBacklight();
+  }
+}
+
+BLYNK_WRITE (V4) {
+  int pinValue = param.asInt();
+  if(pinValue == 1) {
+    systemMode++;
+    cnt=0;
+    lcd.clear();
+  }
+}
